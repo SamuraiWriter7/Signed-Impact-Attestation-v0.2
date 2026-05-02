@@ -1,0 +1,750 @@
+spec_id: "signed-impact-attestation-v0.2"
+title: "Signed Impact Attestation v0.2"
+version: "0.2"
+status: "draft"
+type: "normative-specification"
+license: "CC-BY-4.0"
+language: "en"
+summary: >
+  A minimal, portable, and auditable envelope for attaching cryptographic
+  accountability to an Impact Score Profile, extended with existence proof
+  binding so that the responsible issuer's existence, authority, and validity
+  can be verified at the time of issuance.
+
+abstract: >
+  Signed Impact Attestation v0.2 defines a portable attestation document that
+  binds a signed impact evaluation to a referenced Impact Score Profile and to
+  the issuer's existence proof. The goal is not to encode universal truth, but
+  to encode accountable assertion backed by cryptographic integrity, issuer
+  identity, authority scope, and revocation-aware validity checks.
+
+design_goals:
+  - "Keep the attestation envelope minimal and portable."
+  - "Separate scoring logic from signature logic."
+  - "Bind issuer responsibility to an existence proof."
+  - "Support human, organization, AI agent, and hybrid issuers."
+  - "Enable revocation-aware and time-bounded verification."
+  - "Remain compatible with v0.1-style lightweight implementations."
+
+normative_keywords:
+  interpretation: >
+    The key words MUST, MUST NOT, REQUIRED, SHALL, SHALL NOT, SHOULD,
+    SHOULD NOT, RECOMMENDED, MAY, and OPTIONAL in this specification are
+    to be interpreted as normative requirement levels.
+
+principles:
+  - id: "P1"
+    name: "Accountable Assertion"
+    statement: >
+      An attestation expresses a responsibility-bearing claim, not a claim of
+      universal truth.
+  - id: "P2"
+    name: "Existence-Bound Responsibility"
+    statement: >
+      Responsibility is only socially actionable when the responsible issuer's
+      existence and authority can be verified.
+  - id: "P3"
+    name: "Hash-Anchored Integrity"
+    statement: >
+      External references MUST be anchored by content hashes when integrity is required.
+  - id: "P4"
+    name: "Revocation Awareness"
+    statement: >
+      A previously valid issuer or key MAY become invalid later; verification
+      MUST account for revocation and expiry.
+  - id: "P5"
+    name: "Separation of Concerns"
+    statement: >
+      Impact calculation and attestation issuance are separate layers and SHOULD
+      evolve independently.
+
+document_kind: "signed-impact-attestation"
+
+related_specs:
+  - name: "impact-score-profile"
+    role: "subject-evaluation-payload"
+    required: true
+  - name: "existence-proof"
+    role: "issuer-existence-and-authority-binding"
+    required: true
+  - name: "ctr-id"
+    role: "event-or-trace-reference"
+    required: false
+  - name: "trust-os"
+    role: "downstream-trust-consumption"
+    required: false
+  - name: "gratitude-os"
+    role: "downstream-gratitude-consumption"
+    required: false
+  - name: "royalty-os"
+    role: "downstream-value-allocation-consumption"
+    required: false
+
+compatibility:
+  previous_version: "signed-impact-attestation-v0.1"
+  compatibility_mode: "backward-compatible-with-extension"
+  note: >
+    Implementations that only understand v0.1 MAY ignore the existence_proof
+    block, but MUST NOT treat the document as fully validated under v0.2 rules.
+
+enums:
+  issuer_type:
+    - "human"
+    - "organization"
+    - "ai_agent"
+    - "hybrid_agent"
+    - "automated_system"
+
+  decision:
+    - "approved"
+    - "rejected"
+    - "disputed"
+    - "pending"
+    - "withdrawn"
+
+  credential_status:
+    - "valid"
+    - "suspended"
+    - "revoked"
+    - "expired"
+    - "unknown"
+
+  revocation_result:
+    - "not_revoked"
+    - "revoked"
+    - "unknown"
+    - "unreachable"
+
+  assurance_level:
+    - "low"
+    - "medium"
+    - "high"
+    - "qualified"
+
+  effective_status:
+    - "actionable"
+    - "non_actionable"
+    - "disputed"
+    - "indeterminate"
+
+  hash_algorithm:
+    - "sha256"
+    - "sha384"
+    - "sha512"
+
+  signature_algorithm:
+    - "Ed25519"
+    - "ECDSA_P256_SHA256"
+    - "RSA_PSS_SHA256"
+
+  canonicalization:
+    - "JCS"
+    - "RFC8785"
+    - "none"
+
+attestation_document:
+  description: >
+    A signed document that references an Impact Score Profile and binds the
+    attesting issuer to an existence proof.
+
+  required_fields:
+    - "version"
+    - "attestation_id"
+    - "issued_at"
+    - "subject"
+    - "issuer"
+    - "existence_proof"
+    - "review"
+    - "signature"
+    - "integrity"
+
+  fields:
+    version:
+      type: "string"
+      const: "signed-impact-attestation-v0.2"
+      description: "Specification identifier for this document format."
+
+    attestation_id:
+      type: "string"
+      description: "Globally unique identifier for this attestation."
+
+    issued_at:
+      type: "datetime"
+      description: "Timestamp at which the attestation was issued."
+
+    ctr_id:
+      type: "string"
+      required: false
+      description: >
+        Optional trace or event identifier linking this attestation to a CTR-ID
+        or equivalent trace layer record.
+
+    subject:
+      type: "object"
+      description: "The impact evaluation artifact being attested."
+      required_fields:
+        - "impact_score_profile_hash"
+      fields:
+        impact_score_profile_hash:
+          type: "string"
+          description: >
+            Hash of the canonical Impact Score Profile payload, formatted as
+            '<algorithm>:<digest>'.
+        impact_score_profile_uri:
+          type: "string"
+          required: false
+          description: >
+            URI to the referenced Impact Score Profile. Presence is RECOMMENDED
+            when the profile is externally retrievable.
+        impact_score_profile_id:
+          type: "string"
+          required: false
+          description: "Optional stable identifier of the Impact Score Profile."
+        impact_score_profile_version:
+          type: "string"
+          required: false
+          description: "Optional version of the referenced Impact Score Profile."
+        subject_type:
+          type: "string"
+          required: false
+          description: >
+            Optional classifier for the attested subject, such as 'impact-score-profile'.
+
+    issuer:
+      type: "object"
+      description: "The responsible issuer of the attestation."
+      required_fields:
+        - "issuer_id"
+        - "issuer_type"
+      fields:
+        issuer_id:
+          type: "string"
+          description: >
+            Stable issuer identifier, such as a DID, URI, organizational ID,
+            or Existence Proof subject identifier.
+        issuer_type:
+          type: "enum"
+          values_ref: "enums.issuer_type"
+          description: "Category of the attesting issuer."
+        issuer_name:
+          type: "string"
+          required: false
+          description: "Human-readable issuer display name."
+        issuer_role:
+          type: "string"
+          required: false
+          description: >
+            Optional role of the issuer in the evaluation process, such as
+            'reviewer', 'review-council', or 'automated-attestor'.
+
+    existence_proof:
+      type: "object"
+      description: >
+        Binding to the issuer's existence proof. This block provides the minimum
+        information necessary to verify that the responsible issuer exists,
+        possessed the relevant authority, and was valid at issuance time.
+      required_fields:
+        - "existence_proof_id"
+        - "existence_proof_hash"
+        - "subject_id"
+        - "subject_type"
+        - "credential_status"
+      fields:
+        existence_proof_id:
+          type: "string"
+          description: "Stable identifier of the referenced existence proof."
+        existence_proof_uri:
+          type: "string"
+          required: false
+          description: >
+            URI to the referenced existence proof payload. RECOMMENDED when
+            the proof is retrievable externally.
+        existence_proof_hash:
+          type: "string"
+          description: >
+            Hash of the canonical existence proof payload, formatted as
+            '<algorithm>:<digest>'.
+        subject_id:
+          type: "string"
+          description: >
+            The subject identifier contained in the existence proof. This MUST
+            correspond to issuer.issuer_id.
+        subject_type:
+          type: "enum"
+          values_ref: "enums.issuer_type"
+          description: >
+            The subject type contained in the existence proof. This MUST
+            correspond to issuer.issuer_type.
+        credential_status:
+          type: "enum"
+          values_ref: "enums.credential_status"
+          description: >
+            Current status of the credential or proof at verification time.
+            At issuance time, the expected value SHOULD be 'valid'.
+        valid_from:
+          type: "datetime"
+          required: false
+          description: >
+            Start of the validity window for the existence proof or issuer credential.
+        valid_until:
+          type: "datetime"
+          required: false
+          description: >
+            End of the validity window for the existence proof or issuer credential.
+        authority_scope:
+          type: "array"
+          required: false
+          items:
+            type: "string"
+          description: >
+            Scope(s) of authority granted to the issuer, such as 'impact-review',
+            'trust-review', or 'royalty-governance'.
+        assurance_level:
+          type: "enum"
+          required: false
+          values_ref: "enums.assurance_level"
+          description: "Trust strength or verification depth of the existence proof."
+        public_keys:
+          type: "array"
+          required: false
+          items:
+            type: "object"
+            required_fields:
+              - "key_id"
+            fields:
+              key_id:
+                type: "string"
+              key_type:
+                type: "string"
+                required: false
+              public_key_jwk:
+                type: "object"
+                required: false
+              public_key_multibase:
+                type: "string"
+                required: false
+          description: >
+            Optional public key material or references from the existence proof.
+            If present, signature.key_id SHOULD resolve to one of these keys.
+        revocation_check:
+          type: "object"
+          required: false
+          description: >
+            Evidence that revocation status was checked. Strongly RECOMMENDED
+            for actionable downstream use.
+          fields:
+            method:
+              type: "string"
+              required: false
+              description: >
+                Revocation check method, such as 'status-list', 'transparency-log',
+                'ocsp-like', or 'registry-query'.
+            uri:
+              type: "string"
+              required: false
+              description: "Endpoint or registry used for revocation checking."
+            checked_at:
+              type: "datetime"
+              required: false
+              description: "Timestamp of the revocation status check."
+            result:
+              type: "enum"
+              required: false
+              values_ref: "enums.revocation_result"
+              description: "Result of the revocation check."
+
+    review:
+      type: "object"
+      description: "The decision layer of the attestation."
+      required_fields:
+        - "decision"
+      fields:
+        decision:
+          type: "enum"
+          values_ref: "enums.decision"
+          description: "Outcome of the issuer's evaluation."
+        rationale:
+          type: "string"
+          required: false
+          description: "Optional explanation for the decision."
+        review_policy_ref:
+          type: "string"
+          required: false
+          description: >
+            Optional reference to the review policy, ruleset, or governance basis.
+        reviewer_notes:
+          type: "array"
+          required: false
+          items:
+            type: "string"
+          description: "Optional review notes."
+
+    signature:
+      type: "object"
+      description: "Cryptographic signature over the canonical attestation payload."
+      required_fields:
+        - "algorithm"
+        - "signature_value"
+      fields:
+        algorithm:
+          type: "enum"
+          values_ref: "enums.signature_algorithm"
+          description: "Signature algorithm used."
+        signature_value:
+          type: "string"
+          description: "Encoded signature value."
+        key_id:
+          type: "string"
+          required: false
+          description: >
+            Identifier of the signing key. When existence_proof.public_keys is
+            available, this SHOULD refer to one of the bound keys.
+        signed_at:
+          type: "datetime"
+          required: false
+          description: "Optional explicit signing timestamp."
+
+    integrity:
+      type: "object"
+      description: "Document integrity and canonicalization metadata."
+      required_fields:
+        - "canonicalization"
+      fields:
+        canonicalization:
+          type: "enum"
+          values_ref: "enums.canonicalization"
+          description: "Canonicalization method used before hashing/signing."
+        attestation_hash:
+          type: "string"
+          required: false
+          description: >
+            Hash of the canonical attestation payload, formatted as
+            '<algorithm>:<digest>'.
+        payload_hash:
+          type: "string"
+          required: false
+          description: >
+            Hash of the payload that was actually signed, if distinct from the
+            whole attestation document.
+        transparency_log_entry:
+          type: "string"
+          required: false
+          description: >
+            Optional transparency log reference or inclusion proof identifier.
+
+existence_proof_binding:
+  description: >
+    Normative rules that bind the issuer and signature to the referenced
+    existence proof.
+
+  required_invariants:
+    - id: "EPB-1"
+      rule: "issuer.issuer_id MUST equal existence_proof.subject_id."
+    - id: "EPB-2"
+      rule: "issuer.issuer_type MUST equal existence_proof.subject_type."
+    - id: "EPB-3"
+      rule: >
+        If existence_proof.valid_from is present, issued_at MUST be greater
+        than or equal to existence_proof.valid_from.
+    - id: "EPB-4"
+      rule: >
+        If existence_proof.valid_until is present, issued_at MUST be less than
+        or equal to existence_proof.valid_until.
+    - id: "EPB-5"
+      rule: >
+        If existence_proof.public_keys is present and signature.key_id is present,
+        signature.key_id MUST resolve to one of the bound keys.
+    - id: "EPB-6"
+      rule: >
+        If existence_proof.revocation_check.result is present and equals 'revoked',
+        the attestation MUST NOT be treated as actionable.
+    - id: "EPB-7"
+      rule: >
+        If existence_proof.credential_status is 'revoked', 'expired', or 'suspended',
+        the attestation MUST NOT be treated as actionable.
+    - id: "EPB-8"
+      rule: >
+        If authority_scope is present, downstream consumers MUST verify that the
+        intended use is within the declared scope.
+
+validation:
+  description: "Normative validation sequence for compliant verifiers."
+
+  mandatory_steps:
+    - step: 1
+      name: "Version Check"
+      requirement: "version MUST equal 'signed-impact-attestation-v0.2'."
+
+    - step: 2
+      name: "Required Field Check"
+      requirement: >
+        All required top-level and nested required fields MUST be present.
+
+    - step: 3
+      name: "Subject Hash Verification"
+      requirement: >
+        The referenced or embedded Impact Score Profile MUST hash to
+        subject.impact_score_profile_hash.
+
+    - step: 4
+      name: "Existence Proof Hash Verification"
+      requirement: >
+        The referenced or embedded existence proof MUST hash to
+        existence_proof.existence_proof_hash.
+
+    - step: 5
+      name: "Issuer Binding Verification"
+      requirement: >
+        issuer.issuer_id and issuer.issuer_type MUST match the subject values
+        recorded in existence_proof.
+
+    - step: 6
+      name: "Validity Window Verification"
+      requirement: >
+        issued_at MUST fall within the existence proof validity window when
+        valid_from and/or valid_until are present.
+
+    - step: 7
+      name: "Signature Verification"
+      requirement: >
+        The signature MUST verify successfully against the canonicalized payload.
+
+    - step: 8
+      name: "Key Binding Verification"
+      requirement: >
+        If key binding material is available, signature.key_id MUST be bound to
+        the existence proof subject.
+
+    - step: 9
+      name: "Revocation Verification"
+      requirement: >
+        If revocation data is available, the issuer credential and signing key
+        MUST NOT be revoked for the attestation to be actionable.
+
+    - step: 10
+      name: "Authority Scope Verification"
+      requirement: >
+        If authority_scope is present, the verifier MUST confirm that the
+        attestation is being consumed within an allowed scope.
+
+  recommended_steps:
+    - "Verify transparency log inclusion when available."
+    - "Verify review_policy_ref against local governance policy."
+    - "Record verifier timestamp, verifier identity, and validation result."
+    - "Store immutable trace linkage to a CTR-ID or equivalent event record."
+
+status_semantics:
+  decision_layer:
+    approved: "The issuer affirms the reviewed impact evaluation."
+    rejected: "The issuer rejects the reviewed impact evaluation."
+    disputed: "The evaluation is actively disputed."
+    pending: "The evaluation has not reached a final decision."
+    withdrawn: "The issuer or governing body has withdrawn the attestation."
+
+  effective_status_derivation:
+    description: >
+      effective_status is a derived verifier-side interpretation, not a required
+      stored field. It expresses whether the attestation is fit for downstream
+      action such as trust propagation, gratitude acknowledgment, or value allocation.
+    rules:
+      - id: "ES-1"
+        when:
+          review_decision: "approved"
+          credential_status: "valid"
+          revocation_result: "not_revoked"
+        derive: "actionable"
+
+      - id: "ES-2"
+        when:
+          review_decision: "disputed"
+        derive: "disputed"
+
+      - id: "ES-3"
+        when:
+          credential_status_any_of:
+            - "revoked"
+            - "expired"
+            - "suspended"
+        derive: "non_actionable"
+
+      - id: "ES-4"
+        when:
+          revocation_result_any_of:
+            - "revoked"
+        derive: "non_actionable"
+
+      - id: "ES-5"
+        when:
+          review_decision_any_of:
+            - "rejected"
+            - "withdrawn"
+        derive: "non_actionable"
+
+      - id: "ES-6"
+        when:
+          revocation_result_any_of:
+            - "unknown"
+            - "unreachable"
+        derive: "indeterminate"
+
+security_considerations:
+  - id: "SEC-1"
+    risk: "Issuer Impersonation"
+    statement: >
+      An attacker may present a valid-looking signature while binding to an
+      unrelated or forged existence proof. EPB-1 and EPB-2 mitigate this.
+
+  - id: "SEC-2"
+    risk: "Expired or Revoked Credentials"
+    statement: >
+      A signature made by a previously valid issuer may become untrustworthy
+      after revocation or expiry. Verifiers MUST account for time validity and
+      revocation status.
+
+  - id: "SEC-3"
+    risk: "Key Substitution"
+    statement: >
+      If signature.key_id is not bound to the existence proof subject, an attacker
+      may substitute a different key. Key binding is strongly RECOMMENDED.
+
+  - id: "SEC-4"
+    risk: "Reference Swapping"
+    statement: >
+      URI-only references are insufficient for integrity. Hash anchoring of both
+      the Impact Score Profile and the existence proof is REQUIRED.
+
+  - id: "SEC-5"
+    risk: "Over-Consumption Beyond Authority Scope"
+    statement: >
+      An attestation valid for impact review may be misused for royalty settlement
+      or governance escalation. Downstream systems SHOULD enforce authority scope.
+
+  - id: "SEC-6"
+    risk: "Replay in Different Contexts"
+    statement: >
+      An attestation may be replayed outside its intended governance or policy context.
+      review_policy_ref and trace linkage reduce ambiguity.
+
+privacy_considerations:
+  - id: "PRIV-1"
+    statement: >
+      Issuer identifiers SHOULD minimize unnecessary personal data exposure.
+      Pseudonymous or organizational identifiers MAY be used when compatible
+      with the governing existence proof regime.
+  - id: "PRIV-2"
+    statement: >
+      Existence proof references MAY point to privacy-preserving credentials,
+      provided the verifier can still establish issuer binding and validity.
+
+implementation_notes:
+  canonicalization_recommendation: "JCS"
+  hash_recommendation: "sha256"
+  signature_recommendation: "Ed25519"
+  note: >
+    Lightweight implementations MAY omit optional fields, but actionable
+    downstream use is strongest when revocation_check, authority_scope, and
+    key binding are present.
+
+minimal_conformance_profile:
+  description: >
+    The smallest profile that still conforms to v0.2 as a document format.
+    This profile is syntactically conformant but may be insufficient for
+    actionable downstream consumption.
+  required:
+    - "version"
+    - "attestation_id"
+    - "issued_at"
+    - "subject.impact_score_profile_hash"
+    - "issuer.issuer_id"
+    - "issuer.issuer_type"
+    - "existence_proof.existence_proof_id"
+    - "existence_proof.existence_proof_hash"
+    - "existence_proof.subject_id"
+    - "existence_proof.subject_type"
+    - "existence_proof.credential_status"
+    - "review.decision"
+    - "signature.algorithm"
+    - "signature.signature_value"
+    - "integrity.canonicalization"
+
+actionable_conformance_profile:
+  description: >
+    A stronger profile suitable for downstream social or economic use.
+  required_additional:
+    - "existence_proof.valid_from"
+    - "existence_proof.valid_until"
+    - "existence_proof.revocation_check.result"
+    - "signature.key_id"
+  recommended_additional:
+    - "existence_proof.authority_scope"
+    - "existence_proof.assurance_level"
+    - "review.review_policy_ref"
+    - "integrity.attestation_hash"
+
+example:
+  description: "Non-normative example document."
+  document:
+    version: "signed-impact-attestation-v0.2"
+    attestation_id: "sia_01JTH7V9S6FQK7Z6K9X4R2M8AB"
+    issued_at: "2026-05-02T10:30:00Z"
+    ctr_id: "ctr_01JTH7R8X3ZC5D1V0Q9P4N2M7K"
+    subject:
+      impact_score_profile_hash: "sha256:3f2c4a2ee3eaf9a9f5e6d9237c2d9b2f5e7b9b9e4f02d6d8c8393f37c33f2a11"
+      impact_score_profile_uri: "ipfs://example/impact-score-profile.json"
+      impact_score_profile_id: "isp_01JTH7R3N0C2Z8A5K4D1P9V6QX"
+      impact_score_profile_version: "0.1"
+      subject_type: "impact-score-profile"
+    issuer:
+      issuer_id: "did:kazene:org.example.review-council"
+      issuer_type: "organization"
+      issuer_name: "Example Review Council"
+      issuer_role: "review-council"
+    existence_proof:
+      existence_proof_id: "ep_01JTH7T5M8N3Q4R7S1V2W6X9YZ"
+      existence_proof_uri: "ipfs://example/existence-proof.json"
+      existence_proof_hash: "sha256:58a2b2e09f738d35f42c1d87a1b9a81f9c8f0bc48d3c774f5d3b2b286d8358ff"
+      subject_id: "did:kazene:org.example.review-council"
+      subject_type: "organization"
+      credential_status: "valid"
+      valid_from: "2026-01-01T00:00:00Z"
+      valid_until: "2027-01-01T00:00:00Z"
+      authority_scope:
+        - "impact-review"
+        - "royalty-governance"
+      assurance_level: "high"
+      public_keys:
+        - key_id: "did:kazene:org.example.review-council#key-1"
+          key_type: "Ed25519"
+          public_key_multibase: "zExamplePublicKeyMultibaseValue"
+      revocation_check:
+        method: "status-list"
+        uri: "https://example.org/status/review-council.json"
+        checked_at: "2026-05-02T10:29:00Z"
+        result: "not_revoked"
+    review:
+      decision: "approved"
+      rationale: >
+        Impact score reviewed and confirmed under the Example Review Policy v1.2.
+      review_policy_ref: "https://example.org/policies/impact-review-policy-v1.2"
+      reviewer_notes:
+        - "No material inconsistency detected."
+        - "Evidence chain is sufficient for approval."
+    signature:
+      algorithm: "Ed25519"
+      key_id: "did:kazene:org.example.review-council#key-1"
+      signed_at: "2026-05-02T10:30:00Z"
+      signature_value: "base64:MEUCIQDexampleSignatureValue"
+    integrity:
+      canonicalization: "JCS"
+      attestation_hash: "sha256:8dbcc7ebfcb6f8fcf37c9b2b7d8d6f91b3e6a4ad6d76753042ff2c37795d4cd1"
+      payload_hash: "sha256:8dbcc7ebfcb6f8fcf37c9b2b7d8d6f91b3e6a4ad6d76753042ff2c37795d4cd1"
+      transparency_log_entry: "tlog:example:entry:0192837465"
+
+change_log:
+  - version: "0.2"
+    date: "2026-05-02"
+    changes:
+      - "Added existence_proof binding to issuer identity and authority."
+      - "Added validity window and revocation-aware verification model."
+      - "Added actionable vs non_actionable derived status semantics."
+      - "Preserved lightweight attestation envelope structure from v0.1."
