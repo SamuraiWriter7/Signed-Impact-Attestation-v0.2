@@ -1,0 +1,142 @@
+name: Validate Specs
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "spec/**"
+      - "schemas/**"
+      - "examples/**"
+      - ".github/workflows/validate-specs.yml"
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - "spec/**"
+      - "schemas/**"
+      - "examples/**"
+      - ".github/workflows/validate-specs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyYAML jsonschema
+
+      - name: Validate Signed Impact Attestation v0.2
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          import yaml
+          from jsonschema import Draft202012Validator
+
+
+          def fail(message: str) -> None:
+              print(f"ERROR: {message}")
+              sys.exit(1)
+
+
+          def load_yaml(path: Path):
+              if not path.exists():
+                  fail(f"Spec file not found: {path}")
+              try:
+                  with path.open("r", encoding="utf-8") as f:
+                      return yaml.safe_load(f)
+              except yaml.YAMLError as e:
+                  fail(f"Invalid YAML in {path}: {e}")
+
+
+          def load_json(path: Path):
+              if not path.exists():
+                  fail(f"JSON file not found: {path}")
+              try:
+                  with path.open("r", encoding="utf-8") as f:
+                      return json.load(f)
+              except json.JSONDecodeError as e:
+                  fail(f"Invalid JSON in {path}: {e}")
+
+
+          def main() -> None:
+              spec_path = Path("spec/signed-impact-attestation-v0.2.yaml")
+              schema_path = Path("schemas/signed-impact-attestation-v0.2.schema.json")
+              sample_path = Path("examples/signed-impact-attestation.sample.json")
+
+              print("=== Validating Signed Impact Attestation repository ===")
+              print()
+
+              print("=== Validating YAML specification ===")
+              print(f"Spec: {spec_path}")
+              spec = load_yaml(spec_path)
+
+              if not isinstance(spec, dict):
+                  fail(f"YAML spec must be a mapping/object: {spec_path}")
+
+              expected_spec_id = "signed-impact-attestation-v0.2"
+              actual_spec_id = spec.get("spec_id")
+              if actual_spec_id != expected_spec_id:
+                  fail(
+                      f"Unexpected spec_id in {spec_path}: "
+                      f"expected '{expected_spec_id}', got '{actual_spec_id}'"
+                  )
+
+              print("OK: YAML specification loaded successfully.")
+              print()
+
+              print("=== Validating JSON Schema ===")
+              print(f"Schema: {schema_path}")
+              schema = load_json(schema_path)
+
+              try:
+                  Draft202012Validator.check_schema(schema)
+              except Exception as e:
+                  fail(f"Invalid JSON Schema in {schema_path}: {e}")
+
+              print("OK: JSON Schema is valid.")
+              print()
+
+              print("=== Validating example document ===")
+              print(f"Sample: {sample_path}")
+              sample = load_json(sample_path)
+
+              validator = Draft202012Validator(schema)
+              errors = sorted(validator.iter_errors(sample), key=lambda e: list(e.path))
+
+              if errors:
+                  print("Validation errors found:")
+                  for error in errors:
+                      path = ".".join(str(p) for p in error.path) or "<root>"
+                      print(f" - {path}: {error.message}")
+                  sys.exit(1)
+
+              print("OK: Signed Impact Attestation v0.2 sample is valid.")
+              print()
+              print("Validation succeeded.")
+
+
+          if __name__ == "__main__":
+              main()
+          PY
