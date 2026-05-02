@@ -1,0 +1,68 @@
+{
+  "version": "signed-impact-attestation-v0.2",
+  "attestation_id": "sia_01JTH7V9S6FQK7Z6K9X4R2M8AB",
+  "issued_at": "2026-05-02T10:30:00Z",
+  "ctr_id": "ctr_01JTH7R8X3ZC5D1V0Q9P4N2M7K",
+  "subject": {
+    "impact_score_profile_hash": "sha256:3f2c4a2ee3eaf9a9f5e6d9237c2d9b2f5e7b9b9e4f02d6d8c8393f37c33f2a11",
+    "impact_score_profile_uri": "ipfs://example/impact-score-profile.json",
+    "impact_score_profile_id": "isp_01JTH7R3N0C2Z8A5K4D1P9V6QX",
+    "impact_score_profile_version": "0.1",
+    "subject_type": "impact-score-profile"
+  },
+  "issuer": {
+    "issuer_id": "did:kazene:org.example.review-council",
+    "issuer_type": "organization",
+    "issuer_name": "Example Review Council",
+    "issuer_role": "review-council"
+  },
+  "existence_proof": {
+    "existence_proof_id": "ep_01JTH7T5M8N3Q4R7S1V2W6X9YZ",
+    "existence_proof_uri": "ipfs://example/existence-proof.json",
+    "existence_proof_hash": "sha256:58a2b2e09f738d35f42c1d87a1b9a81f9c8f0bc48d3c774f5d3b2b286d8358ff",
+    "subject_id": "did:kazene:org.example.review-council",
+    "subject_type": "organization",
+    "credential_status": "valid",
+    "valid_from": "2026-01-01T00:00:00Z",
+    "valid_until": "2027-01-01T00:00:00Z",
+    "authority_scope": [
+      "impact-review",
+      "royalty-governance"
+    ],
+    "assurance_level": "high",
+    "public_keys": [
+      {
+        "key_id": "did:kazene:org.example.review-council#key-1",
+        "key_type": "Ed25519",
+        "public_key_multibase": "zExamplePublicKeyMultibaseValue"
+      }
+    ],
+    "revocation_check": {
+      "method": "status-list",
+      "uri": "https://example.org/status/review-council.json",
+      "checked_at": "2026-05-02T10:29:00Z",
+      "result": "not_revoked"
+    }
+  },
+  "review": {
+    "decision": "approved",
+    "rationale": "Impact score reviewed and confirmed under the Example Review Policy v1.2.",
+    "review_policy_ref": "https://example.org/policies/impact-review-policy-v1.2",
+    "reviewer_notes": [
+      "No material inconsistency detected.",
+      "Evidence chain is sufficient for approval."
+    ]
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "key_id": "did:kazene:org.example.review-council#key-1",
+    "signed_at": "2026-05-02T10:30:00Z",
+    "signature_value": "base64:MEUCIQDexampleSignatureValue"
+  },
+  "integrity": {
+    "canonicalization": "JCS",
+    "attestation_hash": "sha256:8dbcc7ebfcb6f8fcf37c9b2b7d8d6f91b3e6a4ad6d76753042ff2c37795d4cd1",
+    "payload_hash": "sha256:8dbcc7ebfcb6f8fcf37c9b2b7d8d6f91b3e6a4ad6d76753042ff2c37795d4cd1",
+    "transparency_log_entry": "tlog:example:entry:0192837465"
+  }
+}
