@@ -1,0 +1,453 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kazene.org/schemas/signed-impact-attestation-v0.2.schema.json",
+  "title": "Signed Impact Attestation v0.2",
+  "description": "JSON Schema for Signed Impact Attestation v0.2. A portable and auditable envelope that binds a signed impact evaluation to an Impact Score Profile and to the issuer's existence proof.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "attestation_id",
+    "issued_at",
+    "subject",
+    "issuer",
+    "existence_proof",
+    "review",
+    "signature",
+    "integrity"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "signed-impact-attestation-v0.2",
+      "description": "Specification identifier for this document format."
+    },
+    "attestation_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Globally unique identifier for this attestation."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp at which the attestation was issued."
+    },
+    "ctr_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional trace or event identifier linking this attestation to a CTR-ID or equivalent trace layer record."
+    },
+    "subject": {
+      "$ref": "#/$defs/subject"
+    },
+    "issuer": {
+      "$ref": "#/$defs/issuer"
+    },
+    "existence_proof": {
+      "$ref": "#/$defs/existence_proof"
+    },
+    "review": {
+      "$ref": "#/$defs/review"
+    },
+    "signature": {
+      "$ref": "#/$defs/signature"
+    },
+    "integrity": {
+      "$ref": "#/$defs/integrity"
+    }
+  },
+  "$defs": {
+    "issuer_type": {
+      "type": "string",
+      "enum": [
+        "human",
+        "organization",
+        "ai_agent",
+        "hybrid_agent",
+        "automated_system"
+      ]
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "rejected",
+        "disputed",
+        "pending",
+        "withdrawn"
+      ]
+    },
+    "credential_status": {
+      "type": "string",
+      "enum": [
+        "valid",
+        "suspended",
+        "revoked",
+        "expired",
+        "unknown"
+      ]
+    },
+    "revocation_result": {
+      "type": "string",
+      "enum": [
+        "not_revoked",
+        "revoked",
+        "unknown",
+        "unreachable"
+      ]
+    },
+    "assurance_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "qualified"
+      ]
+    },
+    "signature_algorithm": {
+      "type": "string",
+      "enum": [
+        "Ed25519",
+        "ECDSA_P256_SHA256",
+        "RSA_PSS_SHA256"
+      ]
+    },
+    "canonicalization": {
+      "type": "string",
+      "enum": [
+        "JCS",
+        "RFC8785",
+        "none"
+      ]
+    },
+    "hash_string": {
+      "type": "string",
+      "pattern": "^(sha256|sha384|sha512):[A-Fa-f0-9]+$",
+      "description": "Hash formatted as '<algorithm>:<digest>'."
+    },
+    "uri_string": {
+      "type": "string",
+      "minLength": 1
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "impact_score_profile_hash"
+      ],
+      "properties": {
+        "impact_score_profile_hash": {
+          "$ref": "#/$defs/hash_string"
+        },
+        "impact_score_profile_uri": {
+          "$ref": "#/$defs/uri_string"
+        },
+        "impact_score_profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "impact_score_profile_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "issuer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issuer_id",
+        "issuer_type"
+      ],
+      "properties": {
+        "issuer_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issuer_type": {
+          "$ref": "#/$defs/issuer_type"
+        },
+        "issuer_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issuer_role": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "public_key": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key_id"
+      ],
+      "properties": {
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "public_key_jwk": {
+          "type": "object"
+        },
+        "public_key_multibase": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "public_key_jwk"
+          ]
+        },
+        {
+          "required": [
+            "public_key_multibase"
+          ]
+        },
+        {
+          "required": [
+            "key_type"
+          ]
+        }
+      ]
+    },
+    "revocation_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uri": {
+          "$ref": "#/$defs/uri_string"
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "result": {
+          "$ref": "#/$defs/revocation_result"
+        }
+      }
+    },
+    "existence_proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "existence_proof_id",
+        "existence_proof_hash",
+        "subject_id",
+        "subject_type",
+        "credential_status"
+      ],
+      "properties": {
+        "existence_proof_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "existence_proof_uri": {
+          "$ref": "#/$defs/uri_string"
+        },
+        "existence_proof_hash": {
+          "$ref": "#/$defs/hash_string"
+        },
+        "subject_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject_type": {
+          "$ref": "#/$defs/issuer_type"
+        },
+        "credential_status": {
+          "$ref": "#/$defs/credential_status"
+        },
+        "valid_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "valid_until": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "authority_scope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "assurance_level": {
+          "$ref": "#/$defs/assurance_level"
+        },
+        "public_keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/public_key"
+          }
+        },
+        "revocation_check": {
+          "$ref": "#/$defs/revocation_check"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision"
+      ],
+      "properties": {
+        "decision": {
+          "$ref": "#/$defs/decision"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review_policy_ref": {
+          "$ref": "#/$defs/uri_string"
+        },
+        "reviewer_notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "signature_value"
+      ],
+      "properties": {
+        "algorithm": {
+          "$ref": "#/$defs/signature_algorithm"
+        },
+        "signature_value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalization"
+      ],
+      "properties": {
+        "canonicalization": {
+          "$ref": "#/$defs/canonicalization"
+        },
+        "attestation_hash": {
+          "$ref": "#/$defs/hash_string"
+        },
+        "payload_hash": {
+          "$ref": "#/$defs/hash_string"
+        },
+        "transparency_log_entry": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "If valid_until is present, valid_from should also be present.",
+      "if": {
+        "properties": {
+          "existence_proof": {
+            "required": [
+              "valid_until"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "existence_proof": {
+            "required": [
+              "valid_from"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "If revocation_check.result is present, checked_at is recommended and enforced here for stronger operational consistency.",
+      "if": {
+        "properties": {
+          "existence_proof": {
+            "properties": {
+              "revocation_check": {
+                "required": [
+                  "result"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "existence_proof": {
+            "properties": {
+              "revocation_check": {
+                "required": [
+                  "checked_at"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "If public_keys are provided, signature.key_id is required.",
+      "if": {
+        "properties": {
+          "existence_proof": {
+            "required": [
+              "public_keys"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "signature": {
+            "required": [
+              "key_id"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
